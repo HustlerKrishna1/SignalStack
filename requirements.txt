@@ -1,0 +1,21 @@
+# Core
+streamlit==1.40.0
+pandas==2.2.3
+numpy==1.26.4
+plotly==5.24.1
+
+# Data sources
+pytrends==4.9.2
+requests==2.32.3
+beautifulsoup4==4.12.3
+
+# Utilities
+python-dateutil==2.9.0.post0
+
+# Testing
+pytest==8.0.0
+pytest-cov==4.1.0
+
+# Optional: Jupyter for backtesting notebook
+jupyter==1.0.0
+ipython==8.21.0
