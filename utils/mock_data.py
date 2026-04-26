@@ -2,7 +2,7 @@
 Generate mock data for testing without hitting live APIs.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 import numpy as np
@@ -22,7 +22,7 @@ def generate_mock_market_data(asset: str = "BTC", days: int = 30) -> Dict[str, A
 
     return {
         "asset":                   asset,
-        "timestamp_utc":           datetime.utcnow().isoformat() + "Z",
+        "timestamp_utc":           datetime.now(timezone.utc).isoformat() + "Z",
         "flow_score":              flow_score,
         "flow_score_delta_24h":    float(rng.uniform(-10, 10)),
         "confidence":              float(rng.uniform(0.7, 1.0)),
@@ -70,9 +70,9 @@ def generate_mock_market_data(asset: str = "BTC", days: int = 30) -> Dict[str, A
             "sources_available": ["etf_flows", "funding_rates", "google_trends"],
             "sources_failed":    [],
             "last_updated": {
-                "attention": datetime.utcnow().isoformat(),
-                "capital":   datetime.utcnow().isoformat(),
-                "momentum":  datetime.utcnow().isoformat(),
+                "attention": datetime.now(timezone.utc).isoformat(),
+                "capital":   datetime.now(timezone.utc).isoformat(),
+                "momentum":  datetime.now(timezone.utc).isoformat(),
             },
         },
     }

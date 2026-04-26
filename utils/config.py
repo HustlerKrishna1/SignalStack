@@ -130,7 +130,7 @@ LOG_FORMAT = "[%(asctime)s] %(name)s - %(levelname)s - %(message)s"
 # STREAMLIT SETTINGS
 # ============================================================================
 STREAMLIT_PAGE_TITLE = "SignalStack: Crypto Intelligence Terminal"
-STREAMLIT_PAGE_ICON = "[::]"
+STREAMLIT_PAGE_ICON = "📡"
 STREAMLIT_LAYOUT = "wide"
 STREAMLIT_INITIAL_SIDEBAR_STATE = "expanded"
 

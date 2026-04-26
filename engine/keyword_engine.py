@@ -5,7 +5,8 @@ technologies, events. Combines Google Trends + Google News RSS.
 This is the non-crypto counterpart to engine/signal_engine.py.
 """
 
-from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 import numpy as np
@@ -56,8 +57,16 @@ def compute_keyword_signals(
 
     logger.info(f"Computing keyword signals for: {keyword!r} @ {timeframe}")
 
+    # ---------- Parallel fetch: Trends + News + Related ----------
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        f_trends  = executor.submit(get_google_trends_data, keyword, timeframe)
+        f_news    = executor.submit(get_google_news_velocity, keyword)
+        f_related = executor.submit(get_related_queries, keyword, timeframe) if include_related else None
+        trends_resp = f_trends.result()
+        news_resp   = f_news.result()
+        related_resp = f_related.result() if f_related is not None else None
+
     # ---------- Google Trends ----------
-    trends_resp = get_google_trends_data(keyword, timeframe=timeframe)
     trends_score = float(trends_resp.get("trend_spike_score", 0.0))
     trends_velocity = float(trends_resp.get("trend_velocity", 0.0))
     trends_df = trends_resp.get("raw")
@@ -74,7 +83,6 @@ def compute_keyword_signals(
         current_value = peak_value = average_value = 0.0
 
     # ---------- Google News RSS ----------
-    news_resp = get_google_news_velocity(keyword)
     news_score = float(news_resp.get("news_velocity_score", 0.0))
     news_24h = int(news_resp.get("headlines_24h", 0))
     news_7d_avg = float(news_resp.get("headlines_7d_avg", 0.0))
@@ -109,11 +117,10 @@ def compute_keyword_signals(
     else:
         narrative_state = "STABLE"
 
-    # ---------- Related Queries ----------
+    # ---------- Related Queries (already fetched above) ----------
     related_top: List[Dict[str, Any]] = []
     related_rising: List[Dict[str, Any]] = []
-    if include_related:
-        related_resp = get_related_queries(keyword, timeframe=timeframe)
+    if include_related and related_resp is not None:
         if related_resp.get("error"):
             sources_failed.append(f"Related queries: {related_resp['error']}")
         else:
@@ -126,7 +133,7 @@ def compute_keyword_signals(
         if rising_df is not None and not rising_df.empty:
             related_rising = rising_df.head(10).to_dict(orient="records")
 
-    now_iso = datetime.utcnow().isoformat() + "Z"
+    now_iso = datetime.now(timezone.utc).isoformat()
     result = {
         "keyword":          keyword,
         "timeframe":        timeframe,
@@ -197,14 +204,19 @@ def compare_keywords(
 
     logger.info(f"Comparing keywords: {keywords} @ {timeframe}")
 
-    trends_resp = get_google_trends_comparison(keywords, timeframe=timeframe)
+    with ThreadPoolExecutor(max_workers=min(6, len(keywords) + 1)) as executor:
+        f_trends = executor.submit(get_google_trends_comparison, keywords, timeframe)
+        news_futures = {kw: executor.submit(get_google_news_velocity, kw) for kw in keywords}
+        trends_resp = f_trends.result()
+        news_results = {kw: f.result() for kw, f in news_futures.items()}
+
     trends_df = trends_resp.get("raw")
     summary = trends_resp.get("summary", {}) or {}
     winner = trends_resp.get("winner")
 
     per_keyword = {}
     for kw in keywords:
-        news_resp = get_google_news_velocity(kw)
+        news_resp = news_results[kw]
         per_keyword[kw] = {
             "trends":              summary.get(kw, {}),
             "news_velocity_score": float(news_resp.get("news_velocity_score", 0.0)),
@@ -213,7 +225,7 @@ def compare_keywords(
             "news_error":          news_resp.get("error"),
         }
 
-    now_iso = datetime.utcnow().isoformat() + "Z"
+    now_iso = datetime.now(timezone.utc).isoformat()
     result = {
         "keywords":      keywords,
         "timeframe":     timeframe,

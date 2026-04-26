@@ -6,7 +6,7 @@ Survives Streamlit reruns (stored on disk).
 import json
 import pickle
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from pathlib import Path
 
@@ -60,7 +60,9 @@ class CacheManager:
                 continue
             try:
                 cached_at, value = loader(path)
-                age_minutes = (datetime.utcnow() - cached_at).total_seconds() / 60
+                if cached_at.tzinfo is None:
+                    cached_at = cached_at.replace(tzinfo=timezone.utc)
+                age_minutes = (datetime.now(timezone.utc) - cached_at).total_seconds() / 60
                 if age_minutes > ttl_minutes:
                     path.unlink(missing_ok=True)
                     return None
@@ -84,7 +86,7 @@ class CacheManager:
 
     def set(self, key: str, value: Any) -> None:
         """Store data in cache. Falls back to pickle if value contains DataFrames."""
-        entry_meta = {"cached_at": datetime.utcnow().isoformat(), "value": value}
+        entry_meta = {"cached_at": datetime.now(timezone.utc).isoformat(), "value": value}
         try:
             if _contains_dataframe(value) or not _is_jsonable(value):
                 with open(self._pickle_path(key), "wb") as f:

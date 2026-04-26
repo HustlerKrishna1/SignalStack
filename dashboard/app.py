@@ -598,7 +598,7 @@ def main() -> None:
         st.divider()
         show_debug = st.checkbox("Show debug info")
         st.divider()
-        st.caption("SignalStack v1.1 — keyword search added")
+        st.caption("SignalStack v1.2 — parallel fetching, any keyword")
 
     # Route
     if mode == "Crypto Asset":

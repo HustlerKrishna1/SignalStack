@@ -24,7 +24,7 @@ def get_news_velocity(asset: str) -> Dict[str, Any]:
     if cached:
         return cached
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     try:
         url = f"{CRYPTOPANIC_BASE_URL}/posts/"
         params = {
@@ -100,13 +100,13 @@ def get_news_velocity(asset: str) -> Dict[str, Any]:
             "error":                   None,
         }
 
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("CryptoPanic News", asset, True, duration_ms)
         cache.set(cache_key, result)
         return result
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("CryptoPanic News", asset, False, duration_ms, str(e))
         return {
             "raw":                     pd.DataFrame(),

@@ -3,7 +3,7 @@ CoinGecko API client for price, market data, and trending.
 Free tier: no auth, generous rate limits.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 import pandas as pd
@@ -34,7 +34,7 @@ def get_market_data(asset: str) -> Dict[str, Any]:
     if cached:
         return cached
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     try:
         url = f"{BASE_URL}/simple/price"
         params = {
@@ -60,13 +60,13 @@ def get_market_data(asset: str) -> Dict[str, Any]:
             "price_change_24h_pct":  float(data.get("usd_24h_change", 0)),
             "error":                 None,
         }
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("CoinGecko Market", asset, True, duration_ms)
         cache.set(cache_key, result)
         return result
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("CoinGecko Market", asset, False, duration_ms, str(e))
         return {
             "current_price_usd":    0.0,
@@ -84,7 +84,7 @@ def get_coingecko_trending(target_asset: str = "BTC") -> Dict[str, Any]:
     if cached:
         return _attach_target_score(cached, target_asset)
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     try:
         url = f"{BASE_URL}/search/trending"
         resp = requests.get(
@@ -114,13 +114,13 @@ def get_coingecko_trending(target_asset: str = "BTC") -> Dict[str, Any]:
             "error":                     None,
         }
 
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("CoinGecko Trending", "ALL", True, duration_ms)
         cache.set(cache_key, result)
         return _attach_target_score(result, target_asset)
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("CoinGecko Trending", "ALL", False, duration_ms, str(e))
         return {
             "raw":                       pd.DataFrame(),
@@ -161,7 +161,7 @@ def get_market_chart(asset: str, days: int = 30) -> Dict[str, Any]:
     if cached:
         return cached
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     try:
         url = f"{BASE_URL}/coins/{coingecko_id}/market_chart"
         params = {
@@ -185,20 +185,20 @@ def get_market_chart(asset: str, days: int = 30) -> Dict[str, Any]:
             data.get("market_caps", []),
         ):
             rows.append({
-                "timestamp":      datetime.utcfromtimestamp(price_data[0] / 1000),
+                "timestamp":      datetime.fromtimestamp(price_data[0] / 1000, tz=timezone.utc).replace(tzinfo=None),
                 "price_usd":      float(price_data[1]),
                 "volume_usd":     float(vol_data[1]),
                 "market_cap_usd": float(mcap_data[1]),
             })
         df = pd.DataFrame(rows)
 
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch(f"CoinGecko Chart ({days}d)", asset, True, duration_ms)
         result = {"raw": df, "error": None}
         cache.set(cache_key, result)
         return result
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch(f"CoinGecko Chart ({days}d)", asset, False, duration_ms, str(e))
         return {"raw": pd.DataFrame(), "error": str(e)}

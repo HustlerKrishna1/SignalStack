@@ -3,7 +3,8 @@ Orchestrator: Fetch all data, compute Flow Score, detect divergences.
 Main entry point for signal computation.
 """
 
-from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 import numpy as np
@@ -76,15 +77,32 @@ def compute_signals(
 
     logger.info(f"Computing signals for {asset}...")
 
+    # ==================== PARALLEL DATA FETCH ====================
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        f_trends   = executor.submit(get_google_trends_data, asset)
+        f_trending = executor.submit(get_coingecko_trending, asset)
+        f_news     = executor.submit(get_news_velocity, asset)
+        f_etf      = executor.submit(get_etf_flows, asset)
+        f_funding  = executor.submit(get_funding_rates, asset)
+        f_oi       = executor.submit(get_open_interest_proxy, asset)
+        f_market   = executor.submit(get_market_data, asset)
+        f_momentum = executor.submit(compute_volume_momentum_score, asset)
+        trends_resp   = f_trends.result()
+        trending_resp = f_trending.result()
+        news_resp     = f_news.result()
+        etf_resp      = f_etf.result()
+        funding_resp  = f_funding.result()
+        oi_resp       = f_oi.result()
+        market_resp   = f_market.result()
+        momentum_resp = f_momentum.result()
+
     # ==================== ATTENTION LAYER ====================
-    trends_resp = get_google_trends_data(asset)
     google_trends_spike = float(trends_resp.get("trend_spike_score", 0.0))
     if trends_resp.get("error"):
         sources_failed.append(f"Google Trends: {trends_resp['error']}")
     else:
         sources_available.append("Google Trends")
 
-    trending_resp = get_coingecko_trending(target_asset=asset)
     coingecko_trending_score = float(trending_resp.get("narrative_intensity_score", 0.0))
     coingecko_trending_rank = trending_resp.get("trending_rank")
     if trending_resp.get("error"):
@@ -92,7 +110,6 @@ def compute_signals(
     else:
         sources_available.append("CoinGecko Trending")
 
-    news_resp = get_news_velocity(asset)
     news_velocity_score = float(news_resp.get("news_velocity_score", 0.0))
     if news_resp.get("error"):
         sources_failed.append(f"News: {news_resp['error']}")
@@ -104,7 +121,6 @@ def compute_signals(
     )
 
     # ==================== CAPITAL LAYER ====================
-    etf_resp = get_etf_flows(asset)
     etf_flow_direction_score = float(etf_resp.get("etf_flow_direction_score", 50.0))
     etf_flow_latest = float(etf_resp.get("daily_net_flow_latest", 0.0))
     if etf_resp.get("error"):
@@ -112,7 +128,6 @@ def compute_signals(
     else:
         sources_available.append("ETF Flows")
 
-    funding_resp = get_funding_rates(asset)
     funding_extremity_score = float(funding_resp.get("funding_extremity_score", 0.0))
     current_funding_rate = float(funding_resp.get("current_funding_rate", 0.0))
     if funding_resp.get("error"):
@@ -120,18 +135,15 @@ def compute_signals(
     else:
         sources_available.append("Funding Rates")
 
-    oi_resp = get_open_interest_proxy(asset)
     open_interest_trend = oi_resp.get("oi_trend", "FLAT")
 
     # ==================== MOMENTUM LAYER ====================
-    market_resp = get_market_data(asset)
     price_change_24h = float(market_resp.get("price_change_24h_pct", 0.0))
     if market_resp.get("error"):
         sources_failed.append(f"Market Data: {market_resp['error']}")
     else:
         sources_available.append("Market Data")
 
-    momentum_resp = compute_volume_momentum_score(asset)
     volume_momentum_score = float(momentum_resp["score"])
     volatility_24h = float(momentum_resp.get("volatility_24h", 0.0))
     if momentum_resp.get("error"):
@@ -178,7 +190,7 @@ def compute_signals(
     flow_score_delta_24h = _compute_24h_delta(asset, flow_score)
 
     # ==================== BUILD RESULT ====================
-    now_iso = datetime.utcnow().isoformat() + "Z"
+    now_iso = datetime.now(timezone.utc).isoformat()
     result = {
         "asset":                  asset,
         "timestamp_utc":          now_iso,
@@ -236,7 +248,7 @@ def _store_history_snapshot(asset: str, flow_score: float) -> None:
     history_key = f"history_{asset}"
     history = cache.get(history_key, ttl_minutes=999_999) or []
     history.append({
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "flow_score": float(flow_score),
     })
     history = history[-200:]
@@ -249,13 +261,15 @@ def _compute_24h_delta(asset: str, current_score: float) -> float:
     if not history:
         return 0.0
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     target_age_seconds = 24 * 3600
     best = None
     best_diff = float("inf")
     for entry in history:
         try:
             ts = datetime.fromisoformat(entry["timestamp"])
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
             age = (now - ts).total_seconds()
             diff = abs(age - target_age_seconds)
             if diff < best_diff:

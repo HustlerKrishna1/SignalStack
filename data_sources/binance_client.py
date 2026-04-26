@@ -4,7 +4,7 @@ Funding rates, klines (OHLCV).
 Rate limit: 1200 requests/minute.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 import pandas as pd
@@ -29,7 +29,7 @@ def get_funding_rates(asset: str) -> Dict[str, Any]:
     if cached:
         return cached
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     try:
         url = f"{BASE_URL}/fapi/v1/fundingRate"
 
@@ -57,7 +57,7 @@ def get_funding_rates(asset: str) -> Dict[str, Any]:
 
         rows = [
             {
-                "timestamp":    datetime.utcfromtimestamp(int(item["fundingTime"]) / 1000),
+                "timestamp":    datetime.fromtimestamp(int(item["fundingTime"]) / 1000, tz=timezone.utc).replace(tzinfo=None),
                 "funding_rate": float(item["fundingRate"]),
                 "symbol":       binance_symbol,
             }
@@ -99,13 +99,13 @@ def get_funding_rates(asset: str) -> Dict[str, Any]:
             "error":                        None,
         }
 
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("Binance Funding Rates", asset, True, duration_ms)
         cache.set(cache_key, result)
         return result
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("Binance Funding Rates", asset, False, duration_ms, str(e))
         return _empty_funding_response(str(e))
 
@@ -134,7 +134,7 @@ def get_klines(asset: str, interval: str = "1h", limit: int = 24) -> Dict[str, A
     if cached:
         return cached
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     try:
         url = f"{BASE_URL}/fapi/v1/klines"
         resp = requests.get(
@@ -149,7 +149,7 @@ def get_klines(asset: str, interval: str = "1h", limit: int = 24) -> Dict[str, A
         rows = []
         for candle in data:
             rows.append({
-                "timestamp": datetime.utcfromtimestamp(int(candle[0]) / 1000),
+                "timestamp": datetime.fromtimestamp(int(candle[0]) / 1000, tz=timezone.utc).replace(tzinfo=None),
                 "open":      float(candle[1]),
                 "high":      float(candle[2]),
                 "low":       float(candle[3]),
@@ -158,14 +158,14 @@ def get_klines(asset: str, interval: str = "1h", limit: int = 24) -> Dict[str, A
             })
         df = pd.DataFrame(rows)
 
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch(f"Binance Klines ({interval})", asset, True, duration_ms)
         result = {"raw": df, "error": None}
         cache.set(cache_key, result)
         return result
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch(f"Binance Klines ({interval})", asset, False, duration_ms, str(e))
         return {"raw": pd.DataFrame(), "error": str(e)}
 

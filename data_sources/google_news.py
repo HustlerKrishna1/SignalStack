@@ -24,8 +24,10 @@ def _empty_news_response(error_msg: str) -> Dict[str, Any]:
         "raw":                     pd.DataFrame(columns=["timestamp", "headline", "source", "link"]),
         "headlines_24h":           0,
         "headlines_7d_avg":        0.0,
+        "headlines_total":         0,
         "news_velocity_score":     0.0,
         "news_spike_detected":     False,
+        "top_sources":             {},
         "data_freshness_minutes":  0,
         "error":                   error_msg,
     }
@@ -42,7 +44,7 @@ def get_google_news_velocity(keyword: str, hl: str = "en-US", gl: str = "US") ->
     if cached:
         return cached
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     try:
         encoded = quote(keyword)
         url = (
@@ -119,12 +121,12 @@ def get_google_news_velocity(keyword: str, hl: str = "en-US", gl: str = "US") ->
             "error":                   None,
         }
 
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("Google News RSS", keyword, True, duration_ms)
         cache.set(cache_key, result)
         return result
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("Google News RSS", keyword, False, duration_ms, str(e))
         return _empty_news_response(str(e))

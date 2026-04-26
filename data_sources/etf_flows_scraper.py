@@ -4,7 +4,7 @@ Free, stable, updates daily.
 """
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 import pandas as pd
@@ -60,7 +60,7 @@ def get_etf_flows(asset: str) -> Dict[str, Any]:
     if cached:
         return cached
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     try:
         url = f"https://farside.co.uk/{farside_key}/"
         resp = requests.get(
@@ -143,13 +143,13 @@ def get_etf_flows(asset: str) -> Dict[str, Any]:
             "error":                      None,
         }
 
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("Farside ETF Flows", asset, True, duration_ms)
         cache.set(cache_key, result)
         return result
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("Farside ETF Flows", asset, False, duration_ms, str(e))
 
         stale_cached = cache.get(cache_key, ttl_minutes=999_999)

@@ -8,7 +8,7 @@ Works for ANY keyword — crypto, brands, people, technologies, events.
 """
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -136,7 +136,7 @@ def get_google_trends_data(
     if cached:
         return cached
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     try:
         fetch = _fetch_interest_over_time([keyword], timeframe)
         df_raw = fetch["df"]
@@ -173,13 +173,13 @@ def get_google_trends_data(
             "error":                   None,
         }
 
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch(f"Google Trends [{backend}]", keyword, True, duration_ms)
         cache.set(cache_key, result)
         return result
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("Google Trends", keyword, False, duration_ms, str(e))
         return {
             "raw":                     pd.DataFrame(),
@@ -207,7 +207,7 @@ def get_google_trends_comparison(
     if cached:
         return cached
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     try:
         fetch = _fetch_interest_over_time(keywords, timeframe)
         df_raw = fetch["df"]
@@ -245,13 +245,13 @@ def get_google_trends_comparison(
             "error":   None,
         }
 
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch(f"Google Trends compare [{backend}]", ",".join(keywords), True, duration_ms)
         cache.set(cache_key, result)
         return result
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         log_data_fetch("Google Trends compare", ",".join(keywords), False, duration_ms, str(e))
         return {
             "raw":     pd.DataFrame(),
