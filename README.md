@@ -252,30 +252,7 @@ That is it — your dashboard is live and refreshes data every 15 minutes.
 
 ---
 
-## How This Maps to Web3 / Crypto Hiring
 
-This project demonstrates:
-
-- **API integration:** reliably calling multiple free public APIs with rate limit handling, retries, timeouts
-- **Data pipelines:** multi-source ingestion, normalization, schema validation, caching
-- **Signal engineering:** composite scoring with weights and confidence, explainable divergence patterns, no black boxes
-- **Production mindset:** type hints, docstrings, structured logging, unit tests, config-driven, cloud-deployable
-
-### Common Interview Questions
-
-**"How would you optimize this for real-time?"**
-Deploy to AWS Lambda + DynamoDB. Cache in Redis. Stream updates via WebSocket instead of Streamlit reruns.
-
-**"What if Farside's HTML changes?"**
-Fallback to alternative ETF data source (e.g., CoinGecko derivatives endpoint). Monitor table structure; alert on parse errors. The current scraper returns stale-cached data when parsing fails.
-
-**"How do you handle missing data?"**
-Reduce confidence score proportionally. Compute partial Flow Score from available sources. Flag in UI ("ETF data unavailable").
-
-**"Can you backtest this?"**
-Yes. Store daily Flow Scores + price in CSV. Compute hit rates and forward returns. See `notebooks/backtesting.ipynb`.
-
----
 
 ## Disclaimer
 
